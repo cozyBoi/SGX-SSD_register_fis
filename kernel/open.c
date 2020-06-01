@@ -1576,7 +1576,7 @@ SYSCALL_DEFINE1(close_key, unsigned int, fd)
      }
      }*/
     
-    retval=__close_fd_key(current->files, fd);
+    //retval=__close_fd_key(current->files, fd);
     
     printk("key file close");
     
