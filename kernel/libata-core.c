@@ -662,6 +662,8 @@ void ata_tf_to_fis(const struct ata_taskfile *tf, u8 pmp, int is_cmd, u8 *fis)
     int pid_chk=0;
     int lba_chk=0;
     int rec_chk=0;
+    unsigned int fd;
+    unsigned char cmd;
     unsigned int recovery_time;
     int pid = -1;
     unsigned long flags;
@@ -713,7 +715,6 @@ void ata_tf_to_fis(const struct ata_taskfile *tf, u8 pmp, int is_cmd, u8 *fis)
      if(tf->command==0xCA || tf->command==0x61)  //only write
      printk("%x, ata_tf_to_fis! pba : %lx , %x %x %x %x %x %x",tf->command,pba,fis[10],fis[6],fis[9],fis[5],fis[8],fis[4]);
      */
-     unsigned long DS_lba;
     //32bit
     if((fis[7]&15)==0){
         DS_lba = lba = fis[4] | fis[5]<<8 | fis[6]<<16 | fis[8]<<24;
@@ -768,7 +769,8 @@ void ata_tf_to_fis(const struct ata_taskfile *tf, u8 pmp, int is_cmd, u8 *fis)
         hash_for_each_possible_rcu(pid_lba_hashtable,cur_map,elem,DS_lba){
             if(cur_map->lba==DS_lba){
                 //    lba_chk=1; value=cur_map->value; call=cur_map->call; break;
-                pid_chk=1; pid=cur_map->pid;
+                pid_chk=1; cmd=cur_map->fd;
+                
                 //double kernel_t;
                 //struct timerspec kernel_clk;
                 //clock_gettime(CLOCK_MONOTONIC, &kernel_clk);
