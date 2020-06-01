@@ -1,25 +1,154 @@
 #include <iostream>
+#include <algorithm>
 #include <sys/ipc.h>
 #include <sys/shm.h>
+#include <string.h>
 #include <map>
+#include <vector>
 
-#define POLICY_LIST "/home/jeewon/Desktop/policy_list"
-#define POLICY_MAP_FILE "/home/jeewon/Desktop/policy_file_mapping"
 const int BUF_MAX_SIZE = 1000;
 const int para_MAX_SIZE = 3;
 const int para_MAX_LEN = 100; //same as max directory size
+#define DIR_LEN 100
+#define CONFIG_PID_PATH "/Users/ppp123/Desktop/config_pid"
 
+typedef struct POLICY_INFO{
+    char config[DIR_LEN];
+    //std::map<char*, int> fpath_to_fid;
+    //don't implement deleted_list
+} policy_info;
 
+class PN_DIR{
+public:
+    std::vector<policy_info*> p_info;
+    
+    PN_DIR(){
+        FILE*fp = fopen(CONFIG_PID_PATH, "r");
+        int i = 0, eof = 1;
+        char dir[DIR_LEN];
+        while (eof != EOF) {
+            if(i == 0){
+                eof = fscanf(fp, "%s", dir);
+            }
+            else{
+                eof = fscanf(fp, "\n%s", dir);
+            }
+            if(eof == EOF) return;
+            i++;
+            policy_info*newInfo = new policy_info;
+            strcpy(newInfo->config, dir);
+            p_info.push_back(newInfo);
+            printf("pid %d normalized %s\n", i, dir);
+        }
+    }
+    
+    ~PN_DIR(){
+        FILE*fp = fopen(CONFIG_PID_PATH, "w");
+        for(policy_info*a : p_info){
+            fprintf(fp, "%s\n", a->config);
+        }
+        
+        for(policy_info*a : p_info){
+            delete a;
+        }
+    }
+    
+    int info_len(){
+        return p_info.size();
+    }
+    
+    void add_new_policy(char dir[DIR_LEN]){
+        policy_info*newInfo = new policy_info;
+        strcpy(newInfo->config, dir);
+        p_info.push_back(newInfo);
+    }
+    
+    /*
+    int add_new_fid(char dir[DIR_LEN]){
+        for(auto&a : p_info){
+            if(a->config){
+                return ;
+            }
+        }
+        fpath_to_fid[dir] = get_fileID(dir);
+    }
+    */
+    
+    /*
+    ii fpath_to_pid(char dir[DIR_LEN]){
+        //정책과 path 리턴
+        int i = 0;
+        for(auto&a : p_info){
+            if(a->fpath_to_fid.count(dir) > 0){
+                return ii(i, a->fpath_to_fid[dir]);
+            }
+            i++;
+        }
+        return -1;
+    }
+    */
+    
+    int fpath_to_pid(char dir[DIR_LEN]){
+        //정책과 path 리턴
+        int i = 0;
+        char remove_star[DIR_LEN];
+        
+        for(policy_info*a : p_info){
+            strcpy(remove_star, a->config);
+            if(remove_star[0] == '*'){
+                //맨 앞의 * 지움
+                if(kmp(dir, &remove_star[1])){
+                    return i;
+                }
+            }
+            else{
+                //맨 뒤의 * 지움
+                remove_star[strlen(a->config) - 1] = 0;
+                if(kmp(dir, remove_star)){
+                    return i;
+                }
+            }
+            i++;
+        }
+        return -1;
+    }
+    
+    std::vector<int> getPi(char*p){
+        int m = strlen(p), j=0;
+        std::vector<int> pi(m, 0);
+        for(int i = 1; i < m ; i++){
+            while(j > 0 && p[i] != p[j]) j = pi[j-1];
+            if(p[i] == p[j]) pi[i] = ++j;
+        }
+        return pi;
+    }
+    
+    int kmp(char*s, char*p){
+        std::vector<int> ans;
+        auto pi = getPi(p);
+        int n = strlen(s), m = strlen(p), j =0;
+        for(int i = 0 ; i < n ; i++){
+            while(j>0 && s[i] != p[j]) j = pi[j-1];
+            if(s[i] == p[j]){
+                if(j==m-1){
+                    ans.push_back(i-m+1);
+                    j = pi[j];
+                }
+                else{j++;}
+            }
+        }
+        return !ans.empty();
+    }
+};
 
 typedef struct packet{
     int flag;
-    int data;
+    int pid;
 } _packet;
 
 typedef struct packet_in{
     int flag;
-    int pid;
-    int fid;
+    char dir[100];
 } _packet_in;
 
 int get_fileID(char*in){
@@ -32,7 +161,7 @@ int get_fileID(char*in){
 }
 
 int main() {
-    FILE*fp = fopen(POLICY_LIST, "r+");
+    FILE*fp = fopen("/Users/ppp123/Desktop/policy_list", "r+");
     if(fp == NULL){
         printf("There is no policy file\n");
         return 0;
@@ -43,9 +172,6 @@ int main() {
     char policy_tb[10][3];
     int shmid_pid = shmget((key_t)0x1234, sizeof(_packet), IPC_CREAT | 0666);
     _packet*shmaddr_f_to_p = (_packet*)shmat(shmid_pid, NULL, 0);
-    
-    int shmid_fid = shmget((key_t)0x1235, sizeof(_packet), IPC_CREAT | 0666);
-    _packet*shmaddr_p_to_f = (_packet*)shmat(shmid_fid, NULL, 0);
     
     int shmid_in = shmget((key_t)0x1236, sizeof(_packet_in), IPC_CREAT | 0666);
     _packet_in*shmaddr_in = (_packet_in*)shmat(shmid_in, NULL, 0);
@@ -70,16 +196,6 @@ int main() {
     }
     fclose(fp);
     
-    std::map<int, int> m;
-    fp = fopen(POLICY_MAP_FILE, "r");
-    while(1){
-        int eof, FID, PID;
-        eof = fscanf(fp, "%d %d\n", &FID, &PID);
-        if(eof == EOF) break;
-        m[FID] = PID;
-    }
-    fclose(fp);
-    
     printf("policy list\n");
     printf("pid   ret_time   backup_cycle\n");
     
@@ -87,39 +203,19 @@ int main() {
         printf("  %d          %d              %d\n", policy_tb[i][0],policy_tb[i][1],policy_tb[i][2]);
     }
     
-    while(1){
-        int pid = 0, fileID = 0;
-        
-        if(shmaddr_in->flag){
-            shmaddr_in->flag = 0;
-            pid = shmaddr_in->pid;
-            fileID = shmaddr_in->fid;
-            printf("fileID pid %d %d\n", fileID, pid);
-            m[fileID] = pid;
-        }
-        if(pid == -1 && fileID == -1) break;
-        
-        int fid_data;
-        if(shmaddr_f_to_p->flag){
-            fid_data = shmaddr_f_to_p->data;
-            shmaddr_f_to_p->flag = 0;
-
-            if(m.at(fid_data) == -1){
-                printf("there is no fid like it\n");
-                continue;
-            }
-            shmaddr_p_to_f->data = m[fid_data];
-            shmaddr_p_to_f->flag = 1;
-        }
-    }
+    PN_DIR pn_dir = PN_DIR();
+    char dir[DIR_LEN];
     
-    fp = fopen(POLICY_MAP_FILE, "w");
-    std::map<int, int>::iterator iter;
-    for(iter = m.begin(); iter != m.end() ; iter++){
-        fprintf(fp, "%d %d\n",iter->first, iter->second);
-        printf("%d %d\n",iter->first, iter->second);
+    while(1){
+        if(shmaddr_in->flag){
+            strcpy(dir, shmaddr_in->dir);
+            shmaddr_in->flag = 0;
+            
+            shmaddr_f_to_p->pid = pn_dir.fpath_to_pid(dir);
+            shmaddr_f_to_p->flag = 1;
+            printf("fpath to pid : %s to %d\n", dir, pn_dir.fpath_to_pid(dir));
+        }
     }
-    fclose(fp);
     
     return 0;
 }
