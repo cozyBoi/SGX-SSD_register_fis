@@ -56,7 +56,8 @@
  */
 
 #define BUCKET_SIZE 10
-
+#define KEY_SIZE 16
+#define MAC_SIZE 32
 //for recovery
 //This table sends recovery time to the SATA driver.
 typedef struct recovery_node{
@@ -1631,6 +1632,36 @@ int nonseekable_open(struct inode *inode, struct file *filp)
 }
 
 EXPORT_SYMBOL(nonseekable_open);
+
+
+//DiskShield
+static char* ssd_name="/dev/sdc";
+static struct file* ssd_f=NULL;
+static struct block_device* ssd_bdev;
+#define P_SIZE 4096
+
+static ssize_t enc_is_RD_cmd(unsigned char cmd)
+{
+    if(cmd>DS_RD_RANGE_MIN && cmd<DS_RD_RANGE_MAX)
+        return 1;
+    else if (cmd>DS_WR_RANGE_MIN && cmd < DS_WR_RANGE_MAX)
+        return 0;
+}
+
+static void enc_convert_RD_cmd(DS_PARAM *ds_param)
+{
+    if(ds_param->cmd == DS_CREATE_WR)
+        ds_param->cmd = DS_CREATE_RD;
+    if(ds_param->cmd == DS_OPEN_WR)
+        ds_param->cmd = DS_OPEN_RD;
+    if(ds_param->cmd == DS_WRITE_WR)
+        ds_param->cmd = DS_WRITE_RD;
+    if(ds_param->cmd == DS_CLOSE_WR)
+        ds_param->cmd = DS_CLOSE_RD;
+    if(ds_param->cmd == DS_REMOVE_WR)
+        ds_param->cmd = DS_REMOVE_RD;
+    return;
+}
 
 static ssize_t enc_sync_op(struct file *filp, char __user *buf, size_t len, loff_t *ppos, DS_PARAM *ds_param)
 {
