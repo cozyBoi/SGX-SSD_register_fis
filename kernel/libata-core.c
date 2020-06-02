@@ -836,7 +836,7 @@ void ata_tf_to_fis(const struct ata_taskfile *tf, u8 pmp, int is_cmd, u8 *fis)
             
             //printk("fis familiy : %d %d %d %d %d %d\n", fis[10], fis[9], fis[8], fis[6], fis[5], fis[4]);
             
-            fis[2] = (unsigned char)fd;
+            fis[2] = cmd;
             printk("fid[2] : %d\n", fis[2]);
             
             //fd 집어넣는다.
