@@ -10,7 +10,8 @@ const int BUF_MAX_SIZE = 1000;
 const int para_MAX_SIZE = 3;
 const int para_MAX_LEN = 100; //same as max directory size
 #define DIR_LEN 100
-#define CONFIG_PID_PATH "/Users/ppp123/Desktop/config_pid"
+#define CONFIG_PID_PATH "/home/jeewon/Desktop/config_pid"
+#define POLICY_LIST_PATH "/home/jeewon/Desktop/policy_list"
 
 typedef struct POLICY_INFO{
     char config[DIR_LEN];
@@ -167,7 +168,7 @@ int get_fileID(char*in){
 }
 
 int main() {
-    FILE*fp = fopen("/Users/ppp123/Desktop/policy_list", "r+");
+    FILE*fp = fopen(POLICY_LIST_PATH, "r+");
     if(fp == NULL){
         printf("There is no policy file\n");
         return 0;
@@ -223,7 +224,7 @@ int main() {
                 break;
             }
             pn_dir.add_new_policy(dir);
-            printf("policy added pid %d\n", pn_dir.info_len());
+            printf("policy added pid %d\n", pn_dir.info_len() - 1);
         }
         
         if(shmaddr_in->flag){
@@ -232,7 +233,7 @@ int main() {
             
             shmaddr_f_to_p->pid = pn_dir.fpath_to_pid(dir);
             shmaddr_f_to_p->flag = 1;
-            printf("fpath to pid : %s to %d\n", dir, pn_dir.fpath_to_pid(dir));
+            printf("fpath to pid : %s to pid \"%d\"\n", dir, pn_dir.fpath_to_pid(dir));
         }
     }
     
