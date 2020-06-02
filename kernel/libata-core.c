@@ -781,7 +781,6 @@ void ata_tf_to_fis(const struct ata_taskfile *tf, u8 pmp, int is_cmd, u8 *fis)
         }
         rcu_read_unlock();
         
-        
         if(lba_chk){
             //printk("ata_tf_to_fis! cmd: %x, dev : %x, lba : %lx, key : %x(hexa),%d(int),||.%02x,%02x,%02x,%02x,..%02x,%02x,%02x,%x,"
             //,tf->command,fis[7],lba,key,key,fis[13],fis[10],fis[9],fis[8],  fis[6],fis[5],fis[4],fis[7]&15);
@@ -822,6 +821,7 @@ void ata_tf_to_fis(const struct ata_taskfile *tf, u8 pmp, int is_cmd, u8 *fis)
                     break;
                 default:
                     printk("ata : invalid command");
+                    return;
             }
             
             //diskshield code

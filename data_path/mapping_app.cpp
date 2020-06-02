@@ -151,6 +151,12 @@ typedef struct packet_in{
     char dir[100];
 } _packet_in;
 
+typedef struct packet_fpth{
+    int flag;
+    int pid;
+    char dir[100];
+} _packet_fpth;
+
 int get_fileID(char*in){
     int len = 0;
     int ret = 0;
@@ -172,6 +178,9 @@ int main() {
     char policy_tb[10][3];
     int shmid_pid = shmget((key_t)0x1234, sizeof(_packet), IPC_CREAT | 0666);
     _packet*shmaddr_f_to_p = (_packet*)shmat(shmid_pid, NULL, 0);
+    
+    int shmid_fpth = shmget((key_t)0x1235, sizeof(_packet_fpth), IPC_CREAT | 0666);
+    _packet_fpth*shmaddr_fpth = (_packet_fpth*)shmat(shmid_fpth, NULL, 0);
     
     int shmid_in = shmget((key_t)0x1236, sizeof(_packet_in), IPC_CREAT | 0666);
     _packet_in*shmaddr_in = (_packet_in*)shmat(shmid_in, NULL, 0);
@@ -207,9 +216,19 @@ int main() {
     char dir[DIR_LEN];
     
     while(1){
+        if(shmaddr_fpth->flag){
+            shmaddr_fpth->flag = 0;
+            strcpy(dir, shmaddr_fpth->dir);
+            if(!strcmp(dir, "exit")){
+                break;
+            }
+            pn_dir.add_new_policy(dir);
+            printf("policy added pid %d\n", pn_dir.info_len());
+        }
+        
         if(shmaddr_in->flag){
-            strcpy(dir, shmaddr_in->dir);
             shmaddr_in->flag = 0;
+            strcpy(dir, shmaddr_in->dir);
             
             shmaddr_f_to_p->pid = pn_dir.fpath_to_pid(dir);
             shmaddr_f_to_p->flag = 1;
