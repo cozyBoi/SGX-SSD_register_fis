@@ -1697,7 +1697,8 @@ static ssize_t enc_sync_op(struct file *filp, char __user *buf, size_t len, loff
     //who is key?? --> LBA (offset>>9)
     spin_lock_irqsave(&pidmap_lock[hash_min(cur_map->lba, HASH_BITS(pid_lba_hashtable)) ],flags );
     hash_add_rcu(pid_lba_hashtable,&(cur_map->elem),cur_map->lba);
-    spin_unlock_irqrestore(&lbamap_lock[hash_min(cur_map->lba, HASH_BITS(pid_lba_hashtable)) ],flags );
+    //spin_unlock_irqrestore(&lbamap_lock[hash_min(cur_map->lba, HASH_BITS(pid_lba_hashtable)) ],flags );
+    spin_unlock_irqrestore(&pidmap_lock[hash_min(cur_map->lba, HASH_BITS(pid_lba_hashtable)) ],flags );
     //////////////////////////
     printk("call write iter!\n");
     //doit!

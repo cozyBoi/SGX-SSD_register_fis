@@ -652,6 +652,7 @@ int atapi_cmd_type(u8 opcode)
 void ata_tf_to_fis(const struct ata_taskfile *tf, u8 pmp, int is_cmd, u8 *fis)
 {
     //  int i;
+    printk("ata init!");
     unsigned long lba;
     //int key;//key
     //    KEY_LBA_MAP* cur_map;//key
@@ -753,14 +754,6 @@ void ata_tf_to_fis(const struct ata_taskfile *tf, u8 pmp, int is_cmd, u8 *fis)
         hash_for_each_possible_rcu(key_lba_hashtable,lba_map,elem,lba){
             if(lba_map->lba==lba){
                 lba_chk=1; key=lba_map->key; break;
-            }
-        }
-        rcu_read_unlock();
-        
-        rcu_read_lock();
-        hash_for_each_possible_rcu(recovery_hashtable,rec_map,elem,key){
-            if(rec_map->key==lba){
-                rec_chk=1; recovery_time=rec_map->recovery_time; break;
             }
         }
         rcu_read_unlock();
