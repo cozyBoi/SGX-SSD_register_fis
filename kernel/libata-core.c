@@ -770,7 +770,7 @@ void ata_tf_to_fis(const struct ata_taskfile *tf, u8 pmp, int is_cmd, u8 *fis)
             if(cur_map->lba==DS_lba){
                 //    lba_chk=1; value=cur_map->value; call=cur_map->call; break;
                 pid_chk=1; cmd=cur_map->fd;
-                
+                fd = cur_map->fd;
                 //double kernel_t;
                 //struct timerspec kernel_clk;
                 //clock_gettime(CLOCK_MONOTONIC, &kernel_clk);

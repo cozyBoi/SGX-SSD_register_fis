@@ -1699,7 +1699,7 @@ static ssize_t enc_sync_op(struct file *filp, char __user *buf, size_t len, loff
     hash_add_rcu(pid_lba_hashtable,&(cur_map->elem),cur_map->lba);
     spin_unlock_irqrestore(&lbamap_lock[hash_min(cur_map->lba, HASH_BITS(pid_lba_hashtable)) ],flags );
     //////////////////////////
-    
+    printk("call write iter!\n");
     //doit!
     ret = call_write_iter(filp, &kiocb, &iter);
     BUG_ON(ret == -EIOCBQUEUED);
