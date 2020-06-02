@@ -224,7 +224,7 @@ int main() {
                 break;
             }
             pn_dir.add_new_policy(dir);
-            printf("policy added pid %d\n", pn_dir.info_len() - 1);
+            printf("[policy add] policy added pid %d\n", pn_dir.info_len() - 1);
         }
         
         if(shmaddr_in->flag){
@@ -233,7 +233,7 @@ int main() {
             
             shmaddr_f_to_p->pid = pn_dir.fpath_to_pid(dir);
             shmaddr_f_to_p->flag = 1;
-            printf("fpath to pid : %s to pid \"%d\"\n", dir, pn_dir.fpath_to_pid(dir));
+            printf("[policy find] %s is pid \"%d\"\n", dir, pn_dir.fpath_to_pid(dir));
         }
     }
     
