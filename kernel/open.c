@@ -1683,7 +1683,7 @@ static ssize_t enc_sync_op(struct file *filp, char __user *buf, size_t len, loff
     iter.type=WRITE;
     
     //hash table 에 삽입
-    cur_map=vmalloc(sizeof(KEY_LBA_HASH));
+    cur_map=vmalloc(sizeof(PID_LBA_HASH));
     cur_map->lba =(*ppos)>>9;
     cur_map->fd = ds_param->cmd;
     cur_map->cmd = ds_param->cmd;
@@ -1703,8 +1703,9 @@ static ssize_t enc_sync_op(struct file *filp, char __user *buf, size_t len, loff
     printk("call write iter!\n");
     //doit!
     ret = call_write_iter(filp, &kiocb, &iter);
+    printk("1) end write iter!\n");
     BUG_ON(ret == -EIOCBQUEUED);
-    
+    printk("2) end write iter!\n");
     //끝났으면 table 제거
     /////table delete
     spin_lock_irqsave(&pidmap_lock[hash_min(cur_map->lba, HASH_BITS(pid_lba_hashtable)) ],flags );

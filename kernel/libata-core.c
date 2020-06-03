@@ -761,6 +761,7 @@ void ata_tf_to_fis(const struct ata_taskfile *tf, u8 pmp, int is_cmd, u8 *fis)
         rcu_read_lock();
         hash_for_each_possible_rcu(pid_lba_hashtable,cur_map,elem,DS_lba){
             if(cur_map->lba==DS_lba){
+                printk("pid_chk\n");
                 //    lba_chk=1; value=cur_map->value; call=cur_map->call; break;
                 pid_chk=1; cmd=cur_map->fd;
                 fd = cur_map->fd;
