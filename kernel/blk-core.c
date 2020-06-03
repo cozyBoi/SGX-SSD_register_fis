@@ -35,10 +35,6 @@
 #include <linux/blk-cgroup.h>
 #include <linux/debugfs.h>
 
-#include <linux/vmalloc.h> //key
-#include <linux/hashtable.h> //key_hashtable
-#include <linux/spinlock.h> //key_table_lock
-
 #define CREATE_TRACE_POINTS
 #include <trace/events/block.h>
 
@@ -73,36 +69,6 @@ struct kmem_cache *blk_requestq_cachep;
  * Controlling structure to kblockd
  */
 static struct workqueue_struct *kblockd_workqueue;
-
-
-
-
-/////////////////////////////////////////////////
-#define BUCKET_SIZE 10
-
-typedef struct key_inode_hash_node{
-    unsigned long inode_num;
-    int key;
-    struct hlist_node elem;
-    struct rcu_head rcu;
-}KEY_INODE_HASH;
-
-typedef struct key_lba_hash_node{
-    unsigned long lba;
-    //    unsigned int size;
-    int key;
-    struct hlist_node elem;
-    struct rcu_head rcu;
-    //    struct list_head close_elem;
-}KEY_LBA_HASH;
-DEFINE_HASHTABLE(key_lba_hashtable,BUCKET_SIZE);
-EXPORT_SYMBOL(key_lba_hashtable);
-extern struct hlist_head key_inode_hashtable[1<<BUCKET_SIZE];
-extern spinlock_t keymap_lock[1<<BUCKET_SIZE];
-spinlock_t lbamap_lock[1<<BUCKET_SIZE]={ [0 ... ((1 << (BUCKET_SIZE)) - 1)] = __SPIN_LOCK_UNLOCKED(lbamap_lock) };
-EXPORT_SYMBOL(lbamap_lock);
-////////////////////////////////////////////////////
-
 
 static void blk_clear_congested(struct request_list *rl, int sync)
 {
@@ -2291,11 +2257,7 @@ blk_qc_t generic_make_request(struct bio *bio)
 	 * yet.
 	 */
 	struct bio_list bio_list_on_stack[2];
-	//struct block_device *real_bdev;     ////////////
-	//struct gendisk *real_disk = bio->bi_disk;
 	blk_qc_t ret = BLK_QC_T_NONE;
-
-	
 
 	if (!generic_make_request_checks(bio))
 		goto out;
@@ -2334,17 +2296,6 @@ blk_qc_t generic_make_request(struct bio *bio)
 	current->bio_list = bio_list_on_stack;
 	do {
 		struct request_queue *q = bio->bi_disk->queue;
-		struct inode* inode;//key;
-		KEY_LBA_HASH *cur_map=NULL;
-		KEY_INODE_HASH* cur_inode=NULL;
-		int key;
-		unsigned long lba;
-		unsigned long kflags;
-		int inode_chk=0;
-		struct page* test_page;
-		//
-		//printk("generic_make_request");
-
 		blk_mq_req_flags_t flags = bio->bi_opf & REQ_NOWAIT ?
 			BLK_MQ_REQ_NOWAIT : 0;
 
@@ -2354,96 +2305,6 @@ blk_qc_t generic_make_request(struct bio *bio)
 			/* Create a fresh bio_list for all subordinate requests */
 			bio_list_on_stack[1] = bio_list_on_stack[0];
 			bio_list_init(&bio_list_on_stack[0]);
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-	    if(bio->bi_io_vec){
-		test_page=bio_page(bio);	//현재 bio가 맵핑하고 있는 page 리턴 (bi_idx는 이미 계산된 상황일것임))
-	    }
-	    else{
-	//	printk("failfail %lx, %d,bv_cnt:%d, blkdev_t : %d, %d|",
-	//		(unsigned long)bio->bi_iter.bi_sector, bio->bi_iter.bi_size, bio->bi_vcnt, (bio->bi_bdev->bd_dev)>>20, (bio->bi_bdev->bd_dev)&1048575);
-		printk("failfail %lx, %d,bv_cnt:%d, %d|",
-			(unsigned long)bio->bi_iter.bi_sector, bio->bi_iter.bi_size, bio->bi_vcnt);
-	
-		goto fail_bio_add;
-	    }
-
-	   // if(test_page!=NULL && (!PageSlab(test_page)) && (!PageSwapCache(test_page)) && (!PageAnon(test_page)) && ((bio->bi_bdev->bd_dev)&1048575)!=0){
-	    if(test_page!=NULL && (!PageSlab(test_page)) && (!PageSwapCache(test_page)) && (!PageAnon(test_page))){
-		if(!(test_page->mapping)){
-		//    printk("mapping fail, %lx, %d,bv_cnt:%d, blkdev_t : %d, %d|",
-		//	    (unsigned long)bio->bi_iter.bi_sector, bio->bi_iter.bi_size, bio->bi_vcnt, (bio->bi_bdev->bd_dev)>>20, (bio->bi_bdev->bd_dev)&1048575);
-		    printk("generic_make_request) mapping fail, %lx, %d,bv_cnt:%d|",
-			    (unsigned long)bio->bi_iter.bi_sector, bio->bi_iter.bi_size, bio->bi_vcnt);
-		    goto fail_bio_add;
-		}
-		if(!(test_page->mapping->host)){
-		    printk("fail hmmmm\n");
-		    goto fail_bio_add;
-		}
-
-		inode=test_page->mapping->host;		//해당 페이지는 address space를, address space는 inode를 알고있음
-		lba=(unsigned long)bio->bi_iter.bi_sector;	//bio로부터 맵핑되는 lba를 찾음
-	//	real_disk->
-		//여기는 메타데이터, 슈퍼블록 찾는 코드, 동규가 구현을 제대로 했는지 기억이 안남. 일단 4.15에선 다시 찾아야함.
-		//주석처리하겠음
-		if(0){
-		//if(real_bdev->bd_inode->i_mapping ==test_page->mapping){ //ex: inode block, superblock, etc original block
-//		    if(((bio->bi_bdev->bd_dev)>>20)==8){
-            /* 주석되어있었음.
-		    cur_map=vmalloc(sizeof(KEY_LBA_HASH));
-		    cur_map->key=7777;
-		    cur_map->lba=lba;
-
-		    spin_lock_irqsave(&lbamap_lock[hash_min(lba, HASH_BITS(key_lba_hashtable)) ],flags );
-
-		    hash_add_rcu(key_lba_hashtable,&(cur_map->elem),lba);
-		    spin_unlock_irqrestore(&lbamap_lock[hash_min(lba, HASH_BITS(key_lba_hashtable)) ],flags ); */
-		 //   printk("block_request | inode: %lu, lba : %lx, size:%ld , blkdev_t :|%d, %d|, %d, real_bdev :|%d, %d|, bv_cnt : %d",
-			//	inode->i_ino,lba,bio->bi_iter.bi_size, (bio->bi_bdev->bd_dev)>>20, (bio->bi_bdev->bd_dev)&1048575,bio->bi_vcnt,(real_bdev->bd_dev)>>20,(real_bdev->bd_dev)&1048575, bio->bi_vcnt);
-//		    }
-		} 
-		else{
-		    inode_chk=0;
-		    rcu_read_lock();
-		    hash_for_each_possible_rcu(key_inode_hashtable,cur_inode,elem,inode->i_ino){
-			if(cur_inode->inode_num==inode->i_ino){	//테이블과 매칭되는 아이노드가 있으면 키를 가져온다.
-			    inode_chk=1; key=cur_inode->key;
-			    break;
-			}
-		    }
-		    rcu_read_unlock();
-
-		    if( (!inode_chk) ){// && ((bio->bi_bdev->bd_dev)>>20 )==8){
-			//printk("why_request | inode: %lu, lba : %lx, size:%ld, blkdev_t :|%d, %d|, %d, real_bdev :|%d, %d|, bv_cnt : %d",
-			//	inode->i_ino,lba,bio->bi_iter.bi_size,(bio->bi_bdev->bd_dev)>>20, (bio->bi_bdev->bd_dev)&1048575,bio->bi_vcnt,(real_bdev->bd_dev)>>20,(real_bdev->bd_dev)&1048575, bio->bi_vcnt);
-		 //   printk("why_request | inode: %lu, lba : %lx, size:%ld, %d, bv_cnt : %d",
-		//		inode->i_ino,lba,bio->bi_iter.bi_size,bio->bi_vcnt, bio->bi_vcnt);
-		    
-			}
-
-		    if(inode_chk){
-			cur_map=vmalloc(sizeof(KEY_LBA_HASH));	//key lba 테이블에 삽입한다.
-			cur_map->key=key;
-			cur_map->lba = lba;
-
-			spin_lock_irqsave(&lbamap_lock[hash_min(lba, HASH_BITS(key_lba_hashtable)) ],kflags );
-			hash_add_rcu(key_lba_hashtable,&(cur_map->elem),lba);
-			spin_unlock_irqrestore(&lbamap_lock[hash_min(lba, HASH_BITS(key_lba_hashtable)) ],kflags );
-
-		//	printk("generic_make_request | inode: %lu, lba : %lx, size:%ld, key : %x, blkdev_t :|%d, %d|, %d, real_bdev :|%d, %d|, bv_cnt : %d",
-		//		inode->i_ino,cur_map->lba,bio->bi_iter.bi_size, cur_map->key,(bio->bi_bdev->bd_dev)>>20, (bio->bi_bdev->bd_dev)&1048575,bio->bi_vcnt,(real_bdev->bd_dev)>>20,(real_bdev->bd_dev)&1048575, bio->bi_vcnt);
-		  	printk("generic_make_request | inode: %lu, lba : %lx, size:%ld, key : %x, %d, bv_cnt : %d",
-				inode->i_ino,cur_map->lba,bio->bi_iter.bi_size, cur_map->key,bio->bi_vcnt, bio->bi_vcnt);
-		
-		    }
-
-		}
-	    }
-fail_bio_add :
-	    ////////////////////////////////////////////////////////
-
-
 			ret = q->make_request_fn(q, bio);
 
 			blk_queue_exit(q);
