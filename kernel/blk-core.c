@@ -4,7 +4,7 @@
  * Elevator latency, (C) 2000  Andrea Arcangeli <andrea@suse.de> SuSE
  * Queue request tables / lock, selectable elevator, Jens Axboe <axboe@suse.de>
  * kernel-doc documentation started by NeilBrown <neilb@cse.unsw.edu.au>
- *	-  July2000
+ *    -  July2000
  * bio rewrite, highmem i/o, etc, Jens Axboe <axboe@suse.de> - may 2001
  */
 
@@ -34,6 +34,10 @@
 #include <linux/pm_runtime.h>
 #include <linux/blk-cgroup.h>
 #include <linux/debugfs.h>
+
+#include <linux/vmalloc.h> //key
+#include <linux/hashtable.h> //key_hashtable
+#include <linux/spinlock.h> //key_table_lock
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/block.h>
@@ -69,6 +73,36 @@ struct kmem_cache *blk_requestq_cachep;
  * Controlling structure to kblockd
  */
 static struct workqueue_struct *kblockd_workqueue;
+
+
+
+
+/////////////////////////////////////////////////
+#define BUCKET_SIZE 10
+
+typedef struct key_inode_hash_node{
+    unsigned long inode_num;
+    int key;
+    struct hlist_node elem;
+    struct rcu_head rcu;
+}KEY_INODE_HASH;
+
+typedef struct key_lba_hash_node{
+    unsigned long lba;
+    //    unsigned int size;
+    int key;
+    struct hlist_node elem;
+    struct rcu_head rcu;
+    //    struct list_head close_elem;
+}KEY_LBA_HASH;
+DEFINE_HASHTABLE(key_lba_hashtable,BUCKET_SIZE);
+EXPORT_SYMBOL(key_lba_hashtable);
+extern struct hlist_head key_inode_hashtable[1<<BUCKET_SIZE];
+extern spinlock_t keymap_lock[1<<BUCKET_SIZE];
+spinlock_t lbamap_lock[1<<BUCKET_SIZE]={ [0 ... ((1 << (BUCKET_SIZE)) - 1)] = __SPIN_LOCK_UNLOCKED(lbamap_lock) };
+EXPORT_SYMBOL(lbamap_lock);
+////////////////////////////////////////////////////
+
 
 static void blk_clear_congested(struct request_list *rl, int sync)
 {
