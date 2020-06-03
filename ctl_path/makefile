@@ -13,7 +13,7 @@ KISA_SHA256.o : KISA_SHA256.c
 	gcc -c KISA_SHA256.c
 
 clean:
-	rm -rf spm ctl_path_lib.o
+	rm -rf spm *.o
 
 # spm
 
