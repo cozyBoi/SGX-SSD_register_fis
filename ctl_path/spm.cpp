@@ -10,7 +10,7 @@ const int para_MAX_LEN = 100; //same as max directory size
 #define SPM_CHANGE 0x66
 #define SPM_DELETE 0x67
 
-#define POLICY_LIST "/home/jeewon/Desktop/policy_list"
+#define POLICY_LIST "/home/jinu/Desktop/policy_list"
 
 void line_input(char in[BUF_MAX_SIZE]){
     char buf = 0;
