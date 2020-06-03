@@ -762,8 +762,8 @@ void ata_tf_to_fis(const struct ata_taskfile *tf, u8 pmp, int is_cmd, u8 *fis)
         hash_for_each_possible_rcu(pid_lba_hashtable,cur_map,elem,DS_lba){
             if(cur_map->lba==DS_lba){
                 printk("pid_chk\n");
-                //    lba_chk=1; value=cur_map->value; call=cur_map->call; break;
-                pid_chk=1; cmd=cur_map->fd;
+                pid_chk=1;
+                cmd=cur_map->fd;
                 fd = cur_map->fd;
                 //double kernel_t;
                 //struct timerspec kernel_clk;
@@ -785,19 +785,6 @@ void ata_tf_to_fis(const struct ata_taskfile *tf, u8 pmp, int is_cmd, u8 *fis)
             fis[17] = (key >>8) & 0xff;
             fis[18] = (key >>16) & 0xff;
             fis[19] = (key >>24) & 0xff;
-        }
-        else if(tf->command==0xCA || tf->command==0x61 || tf->command==0x60 || tf->command==0xC8){
-            ;
-            //           printk("write_nokey___ata_tf_to_fios! cmd: %x, dev ;%x, lba : %lx,||%02x,%02x,%02x,%02x,..%02x,%02x,%02x,%x,",
-            //    tf->command,fis[7],lba,fis[13],fis[10],fis[9],fis[8],  fis[6],fis[5],fis[4],fis[7]&15);
-        }
-        else if (rec_chk){
-            printk("recchk: ata_tf_to_fis! cmd: %x, dev : %x, lba : %lx(hexa), %ld(int), key : %x(hexa),%d(int), size: nsect-%d(%x), hobnsect-%d(%x)", tf->command,fis[7],lba,lba,key,key,fis[12],fis[12],fis[13],fis[13]);
-            //put key and send to sata
-            fis[16] = recovery_time & 0xff;
-            fis[17] = (recovery_time >>8) & 0xff;
-            fis[18] = (recovery_time >>16) & 0xff;
-            fis[19] = (recovery_time >>24) & 0xff;
         }
         else if (pid_chk){
             printk("[ata] cmd %d\n", cmd);
@@ -839,7 +826,11 @@ void ata_tf_to_fis(const struct ata_taskfile *tf, u8 pmp, int is_cmd, u8 *fis)
             fis[18]=fd&255;        fd>>=8;
             fis[19]=fd&255;        fd>>=8;
         }
-        
+        else if(tf->command==0xCA || tf->command==0x61 || tf->command==0x60 || tf->command==0xC8){
+            ;
+            //           printk("write_nokey___ata_tf_to_fios! cmd: %x, dev ;%x, lba : %lx,||%02x,%02x,%02x,%02x,..%02x,%02x,%02x,%x,",
+            //    tf->command,fis[7],lba,fis[13],fis[10],fis[9],fis[8],  fis[6],fis[5],fis[4],fis[7]&15);
+        }
     }
     
 }
