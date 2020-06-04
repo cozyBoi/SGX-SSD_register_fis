@@ -701,12 +701,11 @@ void ata_tf_to_fis(const struct ata_taskfile *tf, u8 pmp, int is_cmd, u8 *fis)
      fis[18] = (tf->auxiliary >> 16) & 0xff;
      fis[19] = (tf->auxiliary >> 24) & 0xff;
      */
-    /*
+    
      fis[16] = 0x00;
-     fis[17] = 0x01;
-     fis[18] = 0x02;
-     fis[19] = 0x03;
-     */
+     fis[17] = 0x00;
+     fis[18] = 0x00;
+     fis[19] = 0x00;
     
     
     
@@ -830,6 +829,9 @@ void ata_tf_to_fis(const struct ata_taskfile *tf, u8 pmp, int is_cmd, u8 *fis)
             ;
             //           printk("write_nokey___ata_tf_to_fios! cmd: %x, dev ;%x, lba : %lx,||%02x,%02x,%02x,%02x,..%02x,%02x,%02x,%x,",
             //    tf->command,fis[7],lba,fis[13],fis[10],fis[9],fis[8],  fis[6],fis[5],fis[4],fis[7]&15);
+        }
+        else{
+            
         }
     }
     
