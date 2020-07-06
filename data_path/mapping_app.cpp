@@ -5,6 +5,8 @@
 #include <string.h>
 #include <map>
 #include <vector>
+#include <regex>
+#include <vector>
 
 const int BUF_MAX_SIZE = 1000;
 const int para_MAX_SIZE = 3;
@@ -12,6 +14,9 @@ const int para_MAX_LEN = 100; //same as max directory size
 #define DIR_LEN 100
 #define CONFIG_PID_PATH "/home/jinu/Desktop/config_pid"
 #define POLICY_LIST_PATH "/home/jinu/Desktop/policy_list"
+
+//#define CONFIG_PID_PATH "/Users/ppp123/Desktop/config_pid"
+//#define POLICY_LIST_PATH "/Users/ppp123/Desktop/policy_list"
 
 typedef struct POLICY_INFO{
     char config[DIR_LEN];
@@ -64,81 +69,40 @@ public:
         p_info.push_back(newInfo);
     }
     
-    /*
-    int add_new_fid(char dir[DIR_LEN]){
-        for(auto&a : p_info){
-            if(a->config){
-                return ;
-            }
-        }
-        fpath_to_fid[dir] = get_fileID(dir);
-    }
-    */
-    
-    /*
-    ii fpath_to_pid(char dir[DIR_LEN]){
-        //정책과 path 리턴
-        int i = 0;
-        for(auto&a : p_info){
-            if(a->fpath_to_fid.count(dir) > 0){
-                return ii(i, a->fpath_to_fid[dir]);
-            }
-            i++;
-        }
-        return -1;
-    }
-    */
-    
     int fpath_to_pid(char dir[DIR_LEN]){
-        //정책과 path 리턴
+        //path에 대응되는 정책 리턴
         int i = 0;
-        char remove_star[DIR_LEN];
         
         for(policy_info*a : p_info){
-            strcpy(remove_star, a->config);
-            if(remove_star[0] == '*'){
-                //맨 앞의 * 지움
-                if(kmp(dir, &remove_star[1])){
-                    return i;
-                }
+            char text_for_regex[100];
+            char text_for_config[100];
+            strcpy(text_for_config, a->config);
+            add_slash_to_dot(text_for_config);
+            
+            strcpy(text_for_regex, "[0-9a-zA-Z]+");
+            strcpy(text_for_regex + strlen(text_for_regex), text_for_config);
+            const std::regex txt_regex(text_for_regex);
+            
+            if(std::regex_match(dir, txt_regex)){
+                printf("regex match between %s and %s\n", dir, txt_regex);
+                return i;
             }
-            else{
-                //맨 뒤의 * 지움
-                remove_star[strlen(a->config) - 1] = 0;
-                if(kmp(dir, remove_star)){
-                    return i;
-                }
-            }
+            
             i++;
         }
         return -1;
     }
     
-    std::vector<int> getPi(char*p){
-        int m = strlen(p), j=0;
-        std::vector<int> pi(m, 0);
-        for(int i = 1; i < m ; i++){
-            while(j > 0 && p[i] != p[j]) j = pi[j-1];
-            if(p[i] == p[j]) pi[i] = ++j;
-        }
-        return pi;
-    }
-    
-    int kmp(char*s, char*p){
-        std::vector<int> ans;
-        auto pi = getPi(p);
-        int n = strlen(s), m = strlen(p), j =0;
-        for(int i = 0 ; i < n ; i++){
-            while(j>0 && s[i] != p[j]) j = pi[j-1];
-            if(s[i] == p[j]){
-                if(j==m-1){
-                    ans.push_back(i-m+1);
-                    j = pi[j];
-                }
-                else{j++;}
+    void add_slash_to_dot(char dir[DIR_LEN]){
+        int l = strlen(dir);
+        for(int i = l - 1; i >= 0; i--){
+            if(dir[i] == '.'){
+                char tmp[DIR_LEN * 3];
+                strcpy(tmp, &dir[i]);
+                dir[i] = '\\';
+                stpcpy(&dir[i+1],tmp);
             }
         }
-        return !ans.empty();
     }
 };
 
@@ -235,6 +199,9 @@ int main() {
             shmaddr_f_to_p->flag = 1;
             printf("[policy find] %s is pid \"%d\"\n", dir, pn_dir.fpath_to_pid(dir));
         }
+        scanf("%s\n", dir);
+        printf("dir : %s\n", dir);
+        printf("file path to pid : %d\n", pn_dir.fpath_to_pid(dir));
     }
     
     return 0;
