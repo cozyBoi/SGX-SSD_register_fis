@@ -7,17 +7,20 @@
 #include <vector>
 #include <regex>
 #include <vector>
+#include <string>
 
 const int BUF_MAX_SIZE = 1000;
 const int para_MAX_SIZE = 3;
 const int para_MAX_LEN = 100; //same as max directory size
 #define DIR_LEN 100
-#define CONFIG_PID_PATH "/home/jinu/Desktop/config_pid"
-#define POLICY_LIST_PATH "/home/jinu/Desktop/policy_list"
+//#define CONFIG_PID_PATH "/home/jinu/Desktop/config_pid"
+//#define POLICY_LIST_PATH "/home/jinu/Desktop/policy_list"
 
-//#define CONFIG_PID_PATH "/Users/ppp123/Desktop/config_pid"
-//#define POLICY_LIST_PATH "/Users/ppp123/Desktop/policy_list"
-
+#define CONFIG_PID_PATH "/Users/ppp123/Desktop/config_pid"
+#define POLICY_LIST_PATH "/Users/ppp123/Desktop/policy_list"
+#define FPATH_FID_MAPPING_PATH "/Users/ppp123/Desktop/fpath_fid_mapping"
+std::map<std::string, int> fpath_to_fid_map;
+int fid_num = 0;
 typedef struct POLICY_INFO{
     char config[DIR_LEN];
     //std::map<char*, int> fpath_to_fid;
@@ -84,7 +87,7 @@ public:
             const std::regex txt_regex(text_for_regex);
             
             if(std::regex_match(dir, txt_regex)){
-                printf("regex match between %s and %s\n", dir, txt_regex);
+                printf("regex match between %s and %s\n", dir, text_for_regex);
                 return i;
             }
             
@@ -103,6 +106,20 @@ public:
                 stpcpy(&dir[i+1],tmp);
             }
         }
+    }
+    
+    int get_fid(std::string file_path){
+        std::map<std::string,int>::iterator it = fpath_to_fid_map.find(file_path);
+        if(it == fpath_to_fid_map.end()){
+            return fpath_to_fid_map[file_path] = set_new_fid();
+        }
+        else{
+            return fpath_to_fid_map[file_path];
+        }
+    }
+    
+    int set_new_fid(){
+        return fid_num++;
     }
 };
 
@@ -132,15 +149,6 @@ int get_fileID(char*in){
 }
 
 int main() {
-    FILE*fp = fopen(POLICY_LIST_PATH, "r+");
-    if(fp == NULL){
-        printf("There is no policy file\n");
-        return 0;
-    }
-    
-    int policy_cnt = 0;
-    
-    char policy_tb[10][3];
     int shmid_pid = shmget((key_t)0x1234, sizeof(_packet), IPC_CREAT | 0666);
     _packet*shmaddr_f_to_p = (_packet*)shmat(shmid_pid, NULL, 0);
     
@@ -150,36 +158,22 @@ int main() {
     int shmid_in = shmget((key_t)0x1236, sizeof(_packet_in), IPC_CREAT | 0666);
     _packet_in*shmaddr_in = (_packet_in*)shmat(shmid_in, NULL, 0);
     
-    while(1){
-        int eof, i = 0;
-        char line[10];
-        while(1){
-            char tmp = 0 ;
-            eof = fscanf(fp, "%c", &tmp);
-            line[i++] = tmp;
-            //printf("%c", tmp);
-            if(tmp == '\n' || eof == EOF) break;
+    PN_DIR pn_dir = PN_DIR();
+    
+    FILE*fp = fopen(FPATH_FID_MAPPING_PATH, "r+");
+    if(fp != NULL){
+        fscanf(fp, "%d\n", &fid_num);
+        char tmp_mun[1000]; int tmp_fid = 0;
+        for(int i = 0; i < fid_num; i++){
+            fscanf(fp, "%s %d\n", tmp_mun, &tmp_fid);
+            fpath_to_fid_map[tmp_mun] = tmp_fid;
         }
-        if(eof == EOF) break;
-        
-        policy_tb[policy_cnt][0] = line[0]-'0';
-        policy_tb[policy_cnt][1] = line[2]-'0';
-        policy_tb[policy_cnt][2] = line[4]-'0';
-        
-        policy_cnt++;
     }
     fclose(fp);
     
-    printf("policy list\n");
-    printf("pid   ret_time   backup_cycle\n");
-    
-    for(int i = 0; i < policy_cnt; i++){
-        printf("  %d          %d              %d\n", policy_tb[i][0],policy_tb[i][1],policy_tb[i][2]);
-    }
-    
-    PN_DIR pn_dir = PN_DIR();
     char dir[DIR_LEN];
-    
+    //scanf("%s", dir);
+    //int n = 10;
     while(1){
         if(shmaddr_fpth->flag){
             shmaddr_fpth->flag = 0;
@@ -199,10 +193,16 @@ int main() {
             shmaddr_f_to_p->flag = 1;
             printf("[policy find] %s is pid \"%d\"\n", dir, pn_dir.fpath_to_pid(dir));
         }
-        scanf("%s\n", dir);
-        printf("dir : %s\n", dir);
-        printf("file path to pid : %d\n", pn_dir.fpath_to_pid(dir));
+        //scanf("\n%s", dir);
+        //printf("%d\n", pn_dir.get_fid(std::string(dir)));
+        //printf("file path to pid : %d\n", pn_dir.fpath_to_pid("hi.txt"));
     }
     
+    fp = fopen(FPATH_FID_MAPPING_PATH, "w+");
+    fprintf(fp, "%d\n", fid_num);
+    std::map<std::string, int>::iterator it = fpath_to_fid_map.begin();
+    for(; it != fpath_to_fid_map.end(); it++){
+        fprintf(fp, "%s %d\n", it->first.data(), it->second);
+    }
     return 0;
 }
